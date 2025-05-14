@@ -1,5 +1,5 @@
-// 这份代码是用来和unirun服务器交互用的
-// 改编自msojocs/AutoRun
+// Package protocol 提供与 unirun 服务器交互的相关函数。
+// 改编自 msojocs/AutoRun
 package protocol
 
 import (
@@ -16,6 +16,10 @@ import (
 const appKey = "389885588s0648fa"
 const host = "https://run-lb.tanmasports.com/"
 
+// Login 使用手机号、密码和客户端信息进行登录。
+// 成功返回 UserInfo，失败返回错误信息。
+// 考虑使用 GenerateFakeClient()随机生成一个可被此函数接受的info 这个info是怎么构造的依你而定
+// 返回的UserInfo可以直接用到后续的Submit函数 其OauthToken成员则可以直接用到后续的Get系列函数中
 func Login(phone, password string, info ClientInfo) (*UserInfo, error) {
 	const API = host + "v1/auth/login/password"
 	// Convert body to JSON string
@@ -59,6 +63,8 @@ func Login(phone, password string, info ClientInfo) (*UserInfo, error) {
 	}
 }
 
+// GetUserInfo 根据 Oauth token 获取用户信息。
+// 成功返回 UserInfo，失败返回错误信息。
 func GetUserInfo(token Oauth) (*UserInfo, error) {
 	const API = host + "v1/auth/query/token"
 	req, _ := http.NewRequest(http.MethodGet, API, nil)
@@ -86,6 +92,8 @@ func GetUserInfo(token Oauth) (*UserInfo, error) {
 	return &respBody.Response, nil
 }
 
+// getSchoolBound 获取指定学校的围栏信息。
+// 成功返回 schoolBound 切片，失败返回错误信息。
 func getSchoolBound(token Oauth, schoolID int64) ([]schoolBound, error) {
 	API := fmt.Sprintf("%sv1/unirun/querySchoolBound?schoolId=%d", host, schoolID)
 	req, _ := http.NewRequest(http.MethodGet, API, nil)
@@ -114,6 +122,8 @@ func getSchoolBound(token Oauth, schoolID int64) ([]schoolBound, error) {
 	return respBody.Response, nil
 }
 
+// GetRunStandard 获取指定学校的跑步标准。
+// 成功返回 RunStandard 指针，失败返回错误信息。
 func GetRunStandard(token Oauth, schoolID int64) (*RunStandard, error) {
 	API := fmt.Sprintf("%sv1/unirun/query/runStandard?schoolId=%d", host, schoolID)
 	req, _ := http.NewRequest(http.MethodGet, API, nil)
@@ -142,6 +152,12 @@ func GetRunStandard(token Oauth, schoolID int64) (*RunStandard, error) {
 	return &respBody.Response, nil
 }
 
+// Submit 提交一次跑步记录。
+// user：用户信息 由Login得来 自行注意OauthToken不可持久化保存
+// client：客户端信息 用GenerateFakeClient()生成或者怎么样产生
+// duration：用时（分钟）
+// distance：距离（米）
+// 成功返回 nil，失败返回错误信息。
 func Submit(user UserInfo, client ClientInfo, duration int32, distance int64) error {
 	const API = host + "v1/unirun/save/run/record/new"
 	runstd, err := GetRunStandard(user.OauthToken, user.SchoolID)

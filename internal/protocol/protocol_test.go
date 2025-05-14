@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+// 注意当运行此测试时，测试程序的工作目录和实际产物的工作目录很可能不一致！
+// 考虑将resources文件夹进行拷贝
+
+// 将以下常量换成自己的账号和密码
 const phone = "your_phone"
 const passwd = "your_passwd"
 
