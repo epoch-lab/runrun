@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"net/url"
+	"sort"
 	"strings"
 )
 
@@ -16,12 +17,24 @@ func sign(param *map[string]string, body string) string {
 	const APPKEY = "389885588s0648fa"
 	const APPSECRET = "56E39A1658455588885690425C0FD16055A21676"
 	str := ""
+
 	if param != nil {
-		for k, v := range *param {
+		// 	for k, v := range *param {
+		// 		str += k
+		// 		str += v
+		// 	}
+		// alphabetical order is needed
+		keys := make([]string, 0, len(*param))
+		for k := range *param {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
 			str += k
-			str += v
+			str += (*param)[k]
 		}
 	}
+
 	str += APPKEY
 	str += APPSECRET
 	str += body
