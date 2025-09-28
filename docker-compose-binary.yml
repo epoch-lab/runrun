@@ -2,11 +2,15 @@ version: '3.8'
 
 services:
   runrun-api:
-    build: .
+    image: alpine:latest
     ports:
       - "8080:8080"
     volumes:
+      - ./runrun-server:/app/runrun-server:ro
+      - ./resource:/app/resource:ro
       - ./runrun.db:/app/runrun.db
+    working_dir: /app
+    command: ["./runrun-server"]
     restart: unless-stopped
     environment:
       - GIN_MODE=release

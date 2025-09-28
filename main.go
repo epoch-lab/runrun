@@ -43,8 +43,8 @@ func main() {
 	// Initialize API routes
 	routes.InitApiRouter(r)
 
-	// Get port from config, with a fallback to 8080
-	port := config.GetString("server.port", "8080")
+	// Get port from config, with a fallback to 23450
+	port := config.GetString("server.port", "23450")
 
 	log.Printf("Server starting on port %s", port)
 
