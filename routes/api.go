@@ -20,5 +20,8 @@ func InitApiRouter(r *gin.Engine) {
 
 		// Route to trigger the run process
 		apiRouter.POST("/run", handler.RunHandler)
+		
+		// Authentication endpoint for user registration and login
+		apiRouter.POST("/auth", handler.AuthHandler)
 	}
 }

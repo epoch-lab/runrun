@@ -1,8 +1,9 @@
-
 package handler
 
 import (
 	"errors"
+	"log"
+	"math/rand"
 	"net/http"
 	"runrun/internal"
 	"runrun/internal/protocol"
@@ -13,21 +14,30 @@ import (
 
 // AuthHandler handles user registration and login.
 func AuthHandler(c *gin.Context) {
+	// 1. 从请求体中解析 account 和 password
 	var req protocol.AuthRequest
-	// Bind the request body to the AuthRequest struct.
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "Invalid request body"})
 		return
 	}
 
-	// Basic validation
+	// 基础验证
 	if req.Account == "" || req.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "Account and password are required"})
 		return
 	}
 
+	// 2. 先调用一次Login，验证账号密码是否正确
+	clientInfo := protocol.GenerateFakeClient()
+	userInfo, err := protocol.Login(req.Account, req.Password, clientInfo)
+	if err != nil {
+		// Login失败
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 3, "msg": "账号或者密码错误"})
+		return
+	}
+
+	// Login成功，继续处理数据库逻辑
 	var user internal.User
-	// Check if the user account already exists.
 	result := internal.DB.Where("account = ?", req.Account).First(&user)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -37,21 +47,37 @@ func AuthHandler(c *gin.Context) {
 			Password: req.Password, // TODO: Hash the password before saving!
 		}
 		if createResult := internal.DB.Create(&newUser); createResult.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "msg": "Failed to create user"})
+			log.Printf("Failed to create user: %v", createResult.Error)
+			c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"code": 1, "msg": "登记成功"})
+		
 	} else if result.Error == nil {
-		// Case 2: User exists, check password (login).
-		if user.Password == req.Password { // TODO: Use a secure password comparison!
-			// Password matches
-			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "登录成功"})
-		} else {
-			// Password does not match
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 3, "msg": "登录失败"})
+		// 账号已存在：验证密码并执行跑步
+		if user.Password == req.Password {
+			// 密码匹配：调用submit立即执行一次跑步
+			if err := executeRunForUser(*userInfo, clientInfo); err != nil {
+				log.Printf("Failed to execute run for user %s: %v", req.Account, err)
+				c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"code": 2, "msg": "已登记"})
 		}
+		
 	} else {
-		// Any other database error.
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "msg": "Database error"})
+		// 其他数据库错误
+		log.Printf("Database error in AuthHandler: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
 	}
+}
+
+// executeRunForUser 为用户执行一次跑步
+func executeRunForUser(userInfo protocol.UserInfo, clientInfo protocol.ClientInfo) error {
+	// 生成随机跑步参数 (4-5km, 20-30分钟)
+	distance := int64(4000 + rand.Intn(1000)) // 4000-4999米
+	duration := int32(20 + rand.Intn(10))     // 20-29分钟
+	
+	// 提交跑步记录
+	return protocol.Submit(userInfo, clientInfo, duration, distance)
 }
