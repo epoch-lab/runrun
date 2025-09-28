@@ -61,3 +61,9 @@ type location struct {
 	Location string
 	Edge     []int32
 }
+
+// AuthRequest defines the structure for the authentication endpoint request body.
+type AuthRequest struct {
+	Account  string `json:"account"`
+	Password string `json:"password"`
+}

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"runrun/config"
+	"runrun/internal"
 	"runrun/routes"
 )
 
@@ -12,6 +13,9 @@ func main() {
 	if err := config.Init(); err != nil {
 		log.Fatalf("FATAL: Failed to initialize configuration: %v", err)
 	}
+
+	// Initialize Database
+	internal.InitDB()
 
 	// Initialize Gin router
 	r := gin.Default()
