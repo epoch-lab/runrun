@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  runrun-api:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./runrun.db:/app/runrun.db
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
