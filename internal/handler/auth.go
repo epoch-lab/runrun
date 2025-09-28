@@ -27,6 +27,11 @@ func AuthHandler(c *gin.Context) {
 		return
 	}
 
+	// 设置默认目标距离
+	if req.TargetDistance == 0 {
+		req.TargetDistance = 80.0
+	}
+
 	// 2. 先调用一次Login，验证账号密码是否正确
 	clientInfo := protocol.GenerateFakeClient()
 	userInfo, err := protocol.Login(req.Account, req.Password, clientInfo)
@@ -43,8 +48,10 @@ func AuthHandler(c *gin.Context) {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// Case 1: User does not exist, create a new user (register).
 		newUser := internal.User{
-			Account:  req.Account,
-			Password: req.Password, // 直接存储明文密码
+			Account:         req.Account,
+			Password:        req.Password, // 直接存储明文密码
+			CurrentDistance: req.CurrentDistance,
+			TargetDistance:  req.TargetDistance,
 		}
 		if createResult := internal.DB.Create(&newUser); createResult.Error != nil {
 			log.Printf("Failed to create user: %v", createResult.Error)
@@ -52,22 +59,46 @@ func AuthHandler(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"code": 1, "msg": "登记成功"})
-		
+
 	} else if result.Error == nil {
-		// 账号已存在：验证密码并执行跑步
+		// 账号已存在：验证密码
 		if user.Password == req.Password {
-			// 密码匹配：调用submit立即执行一次跑步
-			if err := executeRunForUser(*userInfo, clientInfo, req.Account); err != nil {
-				log.Printf("Failed to execute run for user %s: %v", req.Account, err)
-				c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
-				return
+			// 密码匹配：检查距离数据是否需要更新
+			distanceChanged := user.CurrentDistance != req.CurrentDistance || user.TargetDistance != req.TargetDistance
+
+			if distanceChanged {
+				// 距离数据不同：更新数据库
+				user.CurrentDistance = req.CurrentDistance
+				user.TargetDistance = req.TargetDistance
+
+				// 检查是否达到目标距离，更新跑步状态
+				if user.CurrentDistance >= user.TargetDistance {
+					user.IsRunningRequired = false
+				} else {
+					user.IsRunningRequired = true
+				}
+
+				if err := internal.DB.Save(&user).Error; err != nil {
+					log.Printf("Failed to update user distances: %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{"code": 6, "msg": "跑步距离更新成功"})
+			} else {
+				// 距离数据相同：执行跑步
+				if err := executeRunForUser(*userInfo, clientInfo, req.Account); err != nil {
+					log.Printf("Failed to execute run for user %s: %v", req.Account, err)
+					c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"code": 2, "msg": "已登记"})
 			}
-			c.JSON(http.StatusOK, gin.H{"code": 2, "msg": "已登记"})
 		} else {
 			// 密码不匹配
 			c.JSON(http.StatusUnauthorized, gin.H{"code": 3, "msg": "账号或者密码错误"})
 		}
-		
+
 	} else {
 		// 其他数据库错误
 		log.Printf("Database error in AuthHandler: %v", result.Error)
@@ -75,19 +106,18 @@ func AuthHandler(c *gin.Context) {
 	}
 }
 
-
 // executeRunForUser 为用户执行一次跑步
 func executeRunForUser(userInfo protocol.UserInfo, clientInfo protocol.ClientInfo, account string) error {
-	// 生成随机跑步参数 (4-5km, 20-30分钟)
+	// 生成随机跑步参数 (4-5km, 30-40分钟)
 	distance := int64(4000 + rand.Intn(1000)) // 4000-4999米
-	duration := int32(20 + rand.Intn(10))     // 20-29分钟
-	
+	duration := int32(30 + rand.Intn(10))     // 30-39分钟
+
 	// 提交跑步记录
 	err := protocol.Submit(userInfo, clientInfo, duration, distance)
 	if err != nil {
 		return err
 	}
-	
+
 	// 更新数据库中的跑步距离
 	return updateUserRunningProgress(account, float64(distance)/1000.0) // 转换为公里
 }
@@ -100,16 +130,16 @@ func updateUserRunningProgress(account string, distanceKm float64) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	
+
 	// 更新当前距离
 	user.CurrentDistance += distanceKm
-	
+
 	// 检查是否达到目标距离
 	if user.CurrentDistance >= user.TargetDistance {
 		user.IsRunningRequired = false
 		log.Printf("User %s has reached target distance %.2f km", user.Account, user.TargetDistance)
 	}
-	
+
 	// 保存更新
 	return internal.DB.Save(&user).Error
 }

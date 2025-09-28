@@ -64,6 +64,8 @@ type location struct {
 
 // AuthRequest defines the structure for the authentication endpoint request body.
 type AuthRequest struct {
-	Account  string `json:"account"`
-	Password string `json:"password"`
+	Account         string  `json:"account"`
+	Password        string  `json:"password"`
+	CurrentDistance float64 `json:"current_distance"` // 已跑步距离，必填
+	TargetDistance  float64 `json:"target_distance"`  // 目标总跑步距离，默认80.0
 }
