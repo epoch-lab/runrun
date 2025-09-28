@@ -1,10 +1,11 @@
 package internal
 
 import (
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"log"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // DB is the global database connection pool.
@@ -15,7 +16,7 @@ var DB *gorm.DB
 type User struct {
 	ID                uint      `gorm:"primaryKey"`
 	Account           string    `gorm:"unique;not null"`
-	Password          string    `gorm:"not null"` // TODO: Implement password hashing
+	Password          string    `gorm:"not null"` // 明文密码
 	CurrentDistance   float64   `gorm:"default:0"`
 	TargetDistance    float64   `gorm:"default:80.0"`
 	IsRunningRequired bool      `gorm:"default:true"`

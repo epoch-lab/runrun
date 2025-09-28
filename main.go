@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
 	"runrun/config"
 	"runrun/internal"
+	"runrun/internal/scheduler"
 	"runrun/routes"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -16,6 +18,10 @@ func main() {
 
 	// Initialize Database
 	internal.InitDB()
+
+	// Initialize and start scheduler
+	sched := scheduler.NewScheduler()
+	sched.Start()
 
 	// Initialize Gin router
 	r := gin.Default()
