@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	c "runrun/common"
 	"time"
@@ -52,6 +53,7 @@ func Login(phone, password string, info ClientInfo) (*UserInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: read response body failed: %w", c.CurrentFunctionName(), err)
 	}
+	log.Printf("[Network] Raw response from Login API: %s", string(bodyBytes))
 	var respBody response[UserInfo]
 	if err := json.Unmarshal(bodyBytes, &respBody); err != nil {
 		return nil, fmt.Errorf("%s: parse response failed: %w", c.CurrentFunctionName(), err)
@@ -207,6 +209,7 @@ func Submit(user UserInfo, client ClientInfo, duration int32, distance int64) er
 	if err != nil {
 		return fmt.Errorf("%s: read response body failed: %w", c.CurrentFunctionName(), err)
 	}
+	log.Printf("[Network] Raw response from Submit API: %s", string(bodyBytes))
 	var respBody response[struct{}]
 	if err := json.Unmarshal(bodyBytes, &respBody); err != nil {
 		return fmt.Errorf("%s: parse response failed: %w", c.CurrentFunctionName(), err)

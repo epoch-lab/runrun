@@ -1,21 +1,31 @@
 package main
 
 import (
-  "fmt"
+	"github.com/gin-gonic/gin"
+	"log"
+	"runrun/config"
+	"runrun/routes"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
-
 func main() {
-  //TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
-  // to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
-  s := "gopher"
-  fmt.Printf("Hello and welcome, %s!\n", s)
+	// Load application configuration from resource/application.yaml
+	if err := config.Init(); err != nil {
+		log.Fatalf("FATAL: Failed to initialize configuration: %v", err)
+	}
 
-  for i := 1; i <= 5; i++ {
-	//TIP <p>To start your debugging session, right-click your code in the editor and select the Debug option.</p> <p>We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-	// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.</p>
-	fmt.Println("i =", 100/i)
-  }
+	// Initialize Gin router
+	r := gin.Default()
+
+	// Initialize API routes
+	routes.InitApiRouter(r)
+
+	// Get port from config, with a fallback to 8080
+	port := config.GetString("server.port", "8080")
+
+	log.Printf("Server starting on port %s", port)
+
+	// Start the server
+	if err := r.Run(":" + port); err != nil {
+		log.Fatalf("FATAL: Failed to start server: %v", err)
+	}
 }
