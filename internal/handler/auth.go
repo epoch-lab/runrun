@@ -87,6 +87,11 @@ func AuthHandler(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"code": 6, "msg": "跑步距离更新成功"})
 			} else {
 				// 距离数据相同：执行跑步
+				if userInfo == nil {
+					log.Printf("Login succeeded but userInfo is nil for account: %s", req.Account)
+					c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "内部服务器错误：无法获取用户信息"})
+					return
+				}
 				if err := executeRunForUser(*userInfo, clientInfo, req.Account); err != nil {
 					log.Printf("Failed to execute run for user %s: %v", req.Account, err)
 					c.JSON(http.StatusInternalServerError, gin.H{"code": 5, "msg": "其他错误"})
